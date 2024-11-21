@@ -1,5 +1,6 @@
 package com.digitaldark.ChambeaPe_Api.user.controller;
 
+import com.digitaldark.ChambeaPe_Api.security.model.dto.response.UserLoginResponse;
 import com.digitaldark.ChambeaPe_Api.user.dto.request.UserLoginDTO;
 import com.digitaldark.ChambeaPe_Api.user.dto.request.UserRequestDTO;
 import com.digitaldark.ChambeaPe_Api.user.dto.response.UserResponseDTO;
@@ -68,8 +69,8 @@ public class UserController {
                     schema = @Schema(implementation = UserResponseDTO.class)))
     @Transactional(readOnly = true)
     @PostMapping("/users/login")
-    public ResponseEntity<UserResponseDTO> getUserByEmailAndPass(@Valid @RequestBody UserLoginDTO userLoginDTO) {
-        return new ResponseEntity<UserResponseDTO>(userService.getUserEmailAndPass(userLoginDTO), HttpStatus.OK);
+    public ResponseEntity<UserLoginResponse> getUserByEmailAndPass(@Valid @RequestBody UserLoginDTO userLoginDTO) {
+        return new ResponseEntity<UserLoginResponse>(userService.getUserEmailAndPass(userLoginDTO), HttpStatus.OK);
     }
 
     //URL: http://localhost:8080/api/v1/users

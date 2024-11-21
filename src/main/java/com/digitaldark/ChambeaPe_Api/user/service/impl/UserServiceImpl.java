@@ -1,6 +1,11 @@
 package com.digitaldark.ChambeaPe_Api.user.service.impl;
 
 import com.digitaldark.ChambeaPe_Api.email.service.IEmailService;
+import com.digitaldark.ChambeaPe_Api.security.model.dto.request.LoginRequestDto;
+import com.digitaldark.ChambeaPe_Api.security.model.dto.request.RegisterRequestDto;
+import com.digitaldark.ChambeaPe_Api.security.model.dto.response.TokenResponseDto;
+import com.digitaldark.ChambeaPe_Api.security.model.dto.response.UserLoginResponse;
+import com.digitaldark.ChambeaPe_Api.security.service.IAuthService;
 import com.digitaldark.ChambeaPe_Api.shared.exception.ResourceNotFoundException;
 import com.digitaldark.ChambeaPe_Api.shared.exception.ValidationException;
 import com.digitaldark.ChambeaPe_Api.user.dto.request.UserLoginDTO;
@@ -13,6 +18,7 @@ import com.digitaldark.ChambeaPe_Api.user.repository.UserRepository;
 import com.digitaldark.ChambeaPe_Api.user.service.EmployerService;
 import com.digitaldark.ChambeaPe_Api.user.service.UserService;
 import com.digitaldark.ChambeaPe_Api.user.service.WorkerService;
+import com.digitaldark.ChambeaPe_Api.user_security.model.dto.UserResponseDto;
 import jakarta.mail.MessagingException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +46,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private IEmailService emailService;
+
+    @Autowired
+    private IAuthService authService;
 
     @Override
     public UsersEntity createUser(UsersEntity user) throws MessagingException, IOException {
@@ -69,12 +78,20 @@ public class UserServiceImpl implements UserService {
             throw new ValidationException("userRole is invalid");
         }
 
+        authService.registerUser(new RegisterRequestDto(user.getEmail(), user.getPassword()), user.getUserRole());
+
         emailService.userRegistered(user.getEmail());
         return user;
     }
 
     @Override
     public UserResponseDTO createUserDTO(UserRequestDTO user) throws MessagingException, IOException {
+
+        //Si el rol no es E ni W
+        if (!"E".equals(user.getUserRole()) && !"W".equals(user.getUserRole())) {
+            throw new ValidationException("userRole is invalid");
+        }
+
         if (userRepository.existsByEmailOrPhoneNumber(user.getEmail(), user.getPhoneNumber())) {
             throw new ValidationException("Email or phone number already exists");
         }
@@ -117,6 +134,8 @@ public class UserServiceImpl implements UserService {
 
         emailService.userRegistered(user.getEmail());
 
+        authService.registerUser(new RegisterRequestDto(user.getEmail(), user.getPassword()), user.getUserRole());
+
         return modelMapper.map(userEntity, UserResponseDTO.class);
     }
 
@@ -143,13 +162,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDTO getUserEmailAndPass(UserLoginDTO userLoginDTO) {
+    public UserLoginResponse getUserEmailAndPass(UserLoginDTO userLoginDTO) {
         if (!userRepository.existsByEmailAndPassword(userLoginDTO.getEmail(), userLoginDTO.getPassword())) {
             throw new ResourceNotFoundException("Email or password is incorrect");
         }
         UsersEntity user = userRepository.findByEmailAndPassword(userLoginDTO.getEmail(), userLoginDTO.getPassword());
 
-        return modelMapper.map(user, UserResponseDTO.class);
+        UserResponseDTO userResponseDto = modelMapper.map(user, UserResponseDTO.class);
+
+        TokenResponseDto token = authService.login(new LoginRequestDto(user.getEmail(), user.getPassword())).getData();
+
+        return new UserLoginResponse(userResponseDto, token);
     }
 
     @Override
